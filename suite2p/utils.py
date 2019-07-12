@@ -16,10 +16,36 @@ from ScanImageTiffReader import ScanImageTiffReader
 from skimage.external.tifffile import imread, TiffFile
 
 
-def tic():
-    return time.time()
-def toc(i0):
-    return time.time() - i0
+class StopWatch(object):
+    """Measure time between tic() and toc().
+
+    Usage:
+    >>> timer = StopWatch()
+    >>> timer.toc()  # Returns time since initialization in sec.
+    >>> timer.tic()  # Reset timer.
+
+    >>> delayed_timer = StopWatch(start_on_init = False)
+    >>> delayed_timer.tic()  # Start the clock.
+
+    """
+
+    def __init__(self, start_on_init = True):
+        """Initialize StopWatch.
+
+        Start the clock immediately if start_on_init is True.
+
+        """
+        if start_on_init:
+            self.tic()
+
+    def tic(self):
+        """Start clock."""
+        self.t0 = time.time()
+
+    def toc(self):
+        """Return time in sec since last tic."""
+        return time.time() - self.t0
+
 
 def fitMVGaus(y,x,lam,thres=2.5):
     ''' computes 2D gaussian fit to data and returns ellipse of radius thres standard deviations
@@ -315,7 +341,7 @@ def tiff_to_binary(ops):
     ''' converts tiff to *.bin file '''
     ''' requires ops keys: nplanes, nchannels, data_path, look_one_level_down, reg_file '''
     ''' assigns ops keys: tiffreader, first_tiffs, frames_per_folder, nframes, meanImg, meanImg_chan2'''
-    t0=tic()
+    tiff_to_bin_timer = StopWatch()
     # copy ops to list where each element is ops for each plane
     ops1 = init_ops(ops)
     nplanes = ops1[0]['nplanes']
@@ -393,7 +419,7 @@ def tiff_to_binary(ops):
             ix+=nframes
             ntotal+=nframes
             if ntotal%(batch_size*4)==0:
-                print('%d frames of binary, time %0.2f sec.'%(ntotal,toc(t0)))
+                print('%d frames of binary, time %0.2f sec.'%(ntotal, tiff_to_bin_timer.toc()))
         gc.collect()
     # write ops files
     do_registration = ops['do_registration']
@@ -425,7 +451,7 @@ def split_multiops(ops1):
 def mesoscan_to_binary(ops):
     # copy ops to list where each element is ops for each plane
     # load json file with line start stops
-    t0 = tic()
+    mesoscan_to_bin_timer = StopWatch()
     if 'lines' not in ops:
         fpath = os.path.join(ops['data_path'][0], '*json')
         fs = glob.glob(fpath)
@@ -545,7 +571,7 @@ def mesoscan_to_binary(ops):
             ix+=nframes
             ntotal+=nframes
             if ntotal%(batch_size*4)==0:
-                print('%d frames per binary, time %0.2f sec.'%(ntotal,toc(t0)))
+                print('%d frames per binary, time %0.2f sec.'%(ntotal, mesoscan_to_bin_timer.toc()))
         gc.collect()
     # write ops files
     do_registration = ops['do_registration']

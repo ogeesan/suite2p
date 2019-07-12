@@ -11,10 +11,6 @@ except ImportError:
 
 from suite2p import register, dcnv, utils, roiextract
 
-def tic():
-    return time.time()
-def toc(t0):
-    return time.time() - t0
 
 def default_ops():
     ops = {
@@ -94,7 +90,7 @@ def default_ops():
     return ops
 
 def run_s2p(ops={},db={}):
-    t0 = tic()
+    run_s2p_timer = utils.StopWatch()
     ops0 = default_ops()
     ops = {**ops0, **ops}
     ops = {**ops, **db}
@@ -154,19 +150,19 @@ def run_s2p(ops={},db={}):
         # copy tiff to a binary
         if len(ops['h5py']):
             ops1 = utils.h5py_to_binary(ops)
-            print('time %4.2f sec. Wrote h5py to binaries for %d planes'%(toc(t0), len(ops1)))
+            print('time %4.2f sec. Wrote h5py to binaries for %d planes'%(run_s2p_timer.toc(), len(ops1)))
         else:
             if 'mesoscan' in ops and ops['mesoscan']:
                 ops1 = utils.mesoscan_to_binary(ops)
-                print('time %4.2f sec. Wrote tifs to binaries for %d planes'%(toc(t0), len(ops1)))
+                print('time %4.2f sec. Wrote tifs to binaries for %d planes'%(run_s2p_timer.toc(), len(ops1)))
             elif HAS_HAUS:
                 print('time %4.2f sec. Using HAUSIO')
                 dataset = haussio.load_haussio(ops['data_path'][0])
                 ops1 = dataset.tosuite2p(ops)
-                print('time %4.2f sec. Wrote data to binaries for %d planes'%(toc(t0), len(ops1)))
+                print('time %4.2f sec. Wrote data to binaries for %d planes'%(run_s2p_timer.toc(), len(ops1)))
             else:
                 ops1 = utils.tiff_to_binary(ops)
-                print('time %4.2f sec. Wrote tifs to binaries for %d planes'%(toc(t0), len(ops1)))
+                print('time %4.2f sec. Wrote tifs to binaries for %d planes'%(run_s2p_timer.toc(), len(ops1)))
 
         np.save(fpathops1, ops1) # save ops1
     else:
@@ -184,38 +180,40 @@ def run_s2p(ops={},db={}):
     # set up number of CPU workers for registration and cell detection
     ipl = 0
 
+    plane_timer = utils.StopWatch(start_on_init=False)
+    inner_timer = utils.StopWatch(start_on_init=False)
     while ipl<len(ops1):
         print('>>>>>>>>>>>>>>>>>>>>> PLANE %d <<<<<<<<<<<<<<<<<<<<<<'%ipl)
-        t1 = tic()
+        plane_timer.tic()
         if not flag_binreg:
             ######### REGISTRATION #########
-            t11=tic()
+            inner_timer.tic()
             print('----------- REGISTRATION')
             ops1[ipl] = register.register_binary(ops1[ipl]) # register binary
             np.save(fpathops1, ops1) # save ops1
-            print('----------- Total %0.2f sec'%(toc(t11)))
+            print('----------- Total %0.2f sec'%(inner_timer.toc()))
         if 'roidetect' in ops1[ipl]:
             roidetect = ops['roidetect']
         else:
             roidetect = True
         if roidetect:
             ######## CELL DETECTION AND ROI EXTRACTION ##############
-            t11=tic()
+            inner_timer.tic()
             print('----------- ROI DETECTION AND EXTRACTION')
             ops1[ipl] = roiextract.roi_detect_and_extract(ops1[ipl])
             ops = ops1[ipl]
             fpath = ops['save_path']
-            print('----------- Total %0.2f sec.'%(toc(t11)))
+            print('----------- Total %0.2f sec.'%(inner_timer.toc()))
 
             ######### SPIKE DECONVOLUTION ###############
-            t11=tic()
+            inner_timer.tic()
             print('----------- SPIKE DECONVOLUTION')
             F = np.load(os.path.join(fpath,'F.npy'))
             Fneu = np.load(os.path.join(fpath,'Fneu.npy'))
             dF = F - ops['neucoeff']*Fneu
             spks = dcnv.oasis(dF, ops)
             np.save(os.path.join(ops['save_path'],'spks.npy'), spks)
-            print('----------- Total %0.2f sec.'%(toc(t11)))
+            print('----------- Total %0.2f sec.'%(inner_timer.toc()))
 
             # save as matlab file
             if ('save_mat' in ops) and ops['save_mat']:
@@ -230,8 +228,8 @@ def run_s2p(ops={},db={}):
                                      'iscell': iscell})
         else:
             print("WARNING: skipping cell detection (ops['roidetect']=False)")
-        print('Plane %d processed in %0.2f sec (can open in GUI).'%(ipl,toc(t1)))
-        print('total = %0.2f sec.'%(toc(t0)))
+        print('Plane %d processed in %0.2f sec (can open in GUI).'%(ipl,plane_timer.toc()))
+        print('total = %0.2f sec.'%(run_s2p_timer.toc()))
         ipl += 1 #len(ipl)
 
     # save final ops1 with all planes
@@ -252,5 +250,5 @@ def run_s2p(ops={},db={}):
             if ops['nchannels']>1:
                 os.remove(ops['reg_file_chan2'])
 
-    print('TOTAL RUNTIME %0.2f sec'%toc(t0))
+    print('TOTAL RUNTIME %0.2f sec'%run_s2p_timer.toc())
     return ops1

@@ -7,12 +7,8 @@ from scipy.ndimage import gaussian_filter
 from scipy import ndimage
 from matplotlib.colors import hsv_to_rgb
 
-from suite2p import sparsedetect
+from suite2p import sparsedetect, utils
 
-def tic():
-    return time.time()
-def toc(i0):
-    return time.time() - i0
 
 def getSVDdata(ops):
     mov, max_proj = sparsedetect.get_mov(ops)
@@ -366,7 +362,7 @@ def iter_extend(ypix, xpix, Ucell, code, refine=-1, change_codes=False):
 
 def sourcery(ops):
     change_codes = True
-    i0 = tic()
+    sourcery_timer = utils.StopWatch()
     if isinstance(ops['diameter'], int):
         ops['diameter'] = [ops['diameter'], ops['diameter']]
     ops['diameter'] = np.array(ops['diameter'])
@@ -479,7 +475,7 @@ def sourcery(ops):
                 LtU[n,:] = lam[n] @ U[ypix[n],xpix[n],:]
                 LtS[n,:] = lam[n] @ S[ypix[n],xpix[n],:]
         err = (Ucell**2).mean()
-        print('ROIs: %d, cost: %2.4f, time: %2.4f'%(ncells, err, toc(i0)))
+        print('ROIs: %d, cost: %2.4f, time: %2.4f'%(ncells, err, sourcery_timer.toc()))
 
         it += 1
         if refine ==0:

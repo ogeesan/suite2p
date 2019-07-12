@@ -7,10 +7,8 @@ from scipy.ndimage.filters import uniform_filter
 import numpy as np
 from numba import vectorize
 
-def tic():
-    return time.time()
-def toc(i0):
-    return time.time() - i0
+from suite2p import utils
+
 
 @vectorize('float32(float32, float32)', target = 'parallel', nopython=True)
 def my_max(a, b):
@@ -20,7 +18,7 @@ def my_sum(a, b):
     return a+b
 
 def get_mov(ops):
-    t0 = tic()
+    fn_timer = utils.StopWatch()
     badframes = False
     if 'badframes' in ops:
         badframes = True
@@ -71,7 +69,7 @@ def get_mov(ops):
             ix += dbin.shape[0]
     mov = mov[:ix,:,:]
     max_proj = np.max(mov, axis=0)
-    print('Binned movie [%d,%d,%d], %0.2f sec.'%(mov.shape[0], mov.shape[1], mov.shape[2], toc(t0)))
+    print('Binned movie [%d,%d,%d], %0.2f sec.'%(mov.shape[0], mov.shape[1], mov.shape[2], fn_timer.toc()))
 
     #nimgbatch = min(mov.shape[0] , max(int(500/nt0), int(240./nt0 * ops['fs'])))
     if ops['high_pass']<10:
@@ -410,8 +408,6 @@ def sparsery(ops):
     ihop = np.zeros((niter))
     vrat = np.zeros((niter))
     Npix = np.zeros((niter))
-
-    t0 = tic()
 
     for tj in range(niter):
         v0max = np.array([np.amax(V0[j]) for j in range(5)])

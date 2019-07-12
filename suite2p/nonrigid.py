@@ -15,11 +15,6 @@ sigL = 0.85 # smoothing width for up-sampling kernels, keep it between 0.5 and 1
 lpad = 3   # upsample from a square +/- lpad
 subpixel = 10
 
-def tic():
-    return time.time()
-def toc(i0):
-    return time.time() - i0
-
 # smoothing kernel
 def kernelD(a, b):
     dxs = np.reshape(a[0], (-1,1)) - np.reshape(b[0], (1,-1))
@@ -148,7 +143,6 @@ def getSNR(cc, Ls, ops):
     snr = X1max / Xmax # computes snr
     return snr
 def phasecorr(data, refAndMasks, ops):
-    t0=tic()
     ''' loop through blocks and compute phase correlations'''
     nimg, Ly, Lx = data.shape
     maskMul    = refAndMasks[0].squeeze()

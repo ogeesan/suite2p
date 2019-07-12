@@ -7,11 +7,6 @@ import suite2p
 from suite2p import gui2p
 
 
-def tic():
-    return time.time()
-def toc(i0):
-    return time.time() - i0
-
 def main():
     ops = np.load('ops.npy', allow_pickle=True).item()
     suite2p.main(ops)

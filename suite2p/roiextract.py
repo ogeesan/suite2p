@@ -9,11 +9,6 @@ from scipy import stats
 from suite2p import utils, sparsedetect, classifier, chan2detect, sourcery
 
 
-def tic():
-    return time.time()
-def toc(i0):
-    return time.time() - i0
-
 def create_cell_masks(ops, stat):
     '''creates cell masks for ROIs in stat and computes radii
     inputs:
@@ -156,6 +151,7 @@ def extractF(ops, stat, neuropil_masks, reg_file):
     ix = 0
     data = 1
 
+    extractF_timer = utils.StopWatch()
     ops['meanImg'] = np.zeros((Ly,Lx))
     k=0
     while data is not None:
@@ -176,7 +172,7 @@ def extractF(ops, stat, neuropil_masks, reg_file):
         Fneu[:,inds] = np.dot(neuropil_masks , data.T)
         ix += nimg
         k += 1
-    print('Extracted fluorescence from %d ROIs in %d frames, %0.2f sec.'%(ncells, ops['nframes'], toc(t0)))
+    print('Extracted fluorescence from %d ROIs in %d frames, %0.2f sec.'%(ncells, ops['nframes'], extractF_timer.toc()))
     ops['meanImg'] /= k
 
     reg_file.close()
@@ -189,7 +185,7 @@ def masks_and_traces(ops, stat):
         returns: F (ROIs x time), Fneu (ROIs x time), F_chan2, Fneu_chan2, ops, stat
         F_chan2 and Fneu_chan2 will be empty if no second channel
     '''
-    t0=time.time()
+    make_masks_timer = utils.StopWatch()
     stat,cell_pix,_  = create_cell_masks(ops, stat)
     neuropil_masks = create_neuropil_masks(ops,stat,cell_pix)
     Ly=ops['Ly']
@@ -199,7 +195,7 @@ def masks_and_traces(ops, stat):
     stat0 = []
     for n in range(len(stat)):
         stat0.append({'ipix':stat[n]['ipix'],'lam':stat[n]['lam']/stat[n]['lam'].sum()})
-    print('Masks made in %0.2f sec.'%toc(t0))
+    print('Masks made in %0.2f sec.' % make_masks_timer.toc())
 
     F,Fneu,ops = extractF(ops, stat0, neuropil_masks, ops['reg_file'])
     if 'reg_file_chan2' in ops:
@@ -211,12 +207,12 @@ def masks_and_traces(ops, stat):
     return F, Fneu, F_chan2, Fneu_chan2, ops, stat
 
 def roi_detect_and_extract(ops):
-    t0=time.time()
+    find_rois_timer = utils.StopWatch()
     if ops['sparse_mode']:
         ops, stat = sparsedetect.sparsery(ops)
     else:
         ops, stat = sourcery.sourcery(ops)
-    print('Found %d ROIs, %0.2f sec'%(len(stat), toc(t0)))
+    print('Found %d ROIs, %0.2f sec'%(len(stat), find_rois_timer.toc()))
 
     ### apply default classifier ###
     if len(stat) > 0:
