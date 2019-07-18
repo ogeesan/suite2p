@@ -79,6 +79,7 @@ def default_ops():
         # channel 2 detection settings (stat[n]['chan2'], stat[n]['not_chan2'])
         'chan2_thres': 0.65, # minimum for detection of brightness on channel 2
         # deconvolution settings
+        'deconvolve': True,  # Whether to run deconvolution.
         'baseline': 'maximin', # baselining mode (can also choose 'prctile')
         'win_baseline': 60., # window for maximin
         'sig_baseline': 10., # smoothing constant for gaussian filter
@@ -192,10 +193,9 @@ def run_s2p(ops={},db={}):
             ops1[ipl] = register.register_binary(ops1[ipl]) # register binary
             np.save(fpathops1, ops1) # save ops1
             print('----------- Total %0.2f sec'%(inner_timer.toc()))
-        if 'roidetect' in ops1[ipl]:
-            roidetect = ops['roidetect']
-        else:
-            roidetect = True
+
+        roidetect = ops1[ipl].get('roidetect', True)
+
         if roidetect:
             ######## CELL DETECTION AND ROI EXTRACTION ##############
             inner_timer.tic()
@@ -204,7 +204,10 @@ def run_s2p(ops={},db={}):
             ops = ops1[ipl]
             fpath = ops['save_path']
             print('----------- Total %0.2f sec.'%(inner_timer.toc()))
+        else:
+            print("WARNING: skipping cell detection (ops['roidetect']=False)")
 
+        if ops1[ipl].get('deconvolve', True):
             ######### SPIKE DECONVOLUTION ###############
             inner_timer.tic()
             print('----------- SPIKE DECONVOLUTION')
@@ -215,19 +218,16 @@ def run_s2p(ops={},db={}):
             np.save(os.path.join(ops['save_path'],'spks.npy'), spks)
             print('----------- Total %0.2f sec.'%(inner_timer.toc()))
 
-            # save as matlab file
-            if ('save_mat' in ops) and ops['save_mat']:
-                stat = np.load(os.path.join(fpath,'stat.npy'), allow_pickle=True)
-                iscell = np.load(os.path.join(fpath,'iscell.npy'))
-                matpath = os.path.join(ops['save_path'],'Fall.mat')
-                io.savemat(matpath, {'stat': stat,
-                                     'ops': ops,
-                                     'F': F,
-                                     'Fneu': Fneu,
-                                     'spks': spks,
-                                     'iscell': iscell})
-        else:
-            print("WARNING: skipping cell detection (ops['roidetect']=False)")
+        # save as matlab file
+        if ops.get('save_mat', False):
+            stat = np.load(os.path.join(fpath,'stat.npy'), allow_pickle=True)
+            iscell = np.load(os.path.join(fpath,'iscell.npy'))
+
+            matpath = os.path.join(ops['save_path'],'Fall.mat')
+            vars_to_save = ['stat', 'ops', 'F', 'Fneu', 'spks', 'iscell']
+            matdict = {locals()[varname] for varname in vars_to_save if varname in locals()}
+            io.savemat(matpath, matdict)
+
         print('Plane %d processed in %0.2f sec (can open in GUI).'%(ipl,plane_timer.toc()))
         print('total = %0.2f sec.'%(run_s2p_timer.toc()))
         ipl += 1 #len(ipl)
