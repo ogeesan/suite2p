@@ -13,7 +13,9 @@ import scipy.io
 from scipy.ndimage import gaussian_filter
 from scipy.ndimage import filters
 from ScanImageTiffReader import ScanImageTiffReader
-from skimage.external.tifffile import imread, TiffFile
+#from skimage.external.tifffile import imread, TiffFile
+from skimage.io import imread
+from tifffile import TiffFile
 
 
 def tic():

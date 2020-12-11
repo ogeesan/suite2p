@@ -7,7 +7,7 @@ from numpy import fft
 from numba import vectorize, complex64
 from scipy.signal import medfilt
 from suite2p import nonrigid, utils, regmetrics
-from skimage.external.tifffile import TiffWriter
+from tifffile import TiffWriter
 N_threads = int(multiprocessing.cpu_count() / 2)
 #import numexpr3 as ne3
 #ne3.set_nthreads(N_threads)
